@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <title>example前置页 - 检测线路</title>
+  <link rel="stylesheet" href="./reset.min.css" />
+  <style>
+    :root { color-scheme: dark; }
+    body { min-height: 100vh; overflow-x: hidden; background: #07111f; color: #eff6ff; }
+    body::before, body::after { position: fixed; z-index: -1; width: 36rem; height: 36rem; border-radius: 50%; content: ''; filter: blur(80px); opacity: .25; }
+    body::before { top: -17rem; left: -12rem; background: #1677ff; }
+    body::after { right: -14rem; bottom: -19rem; background: #7c3aed; }
+    .hero { padding: 2rem 1rem 4.8rem; border-bottom: 1px solid rgba(148,163,184,.16); background: linear-gradient(180deg,rgba(15,33,57,.92),rgba(7,17,31,.74)); }
+    .hero-inner { width: min(100% - 2rem, 960px); margin: 0 auto; }
+    .hero-copy { max-width: 620px; margin: 1.65rem auto 0; text-align: center; }
+    h1 { margin-bottom: .9rem; font-size: clamp(2rem,5vw,3.25rem); font-weight: 800; letter-spacing: -.04em; line-height: 1.12; }
+    .text { font-size: 1rem; line-height: 1.55; }
+    .subtitle { color: #a8bbd5; }
+    .save-tip { display: inline-flex; align-items: center; gap: .45rem; margin-top: 1.4rem; padding: .6rem .9rem; border: 1px solid rgba(148,163,184,.22); border-radius: 999px; background: rgba(15,23,42,.64); color: #c9d8ec; font-size: .84rem; }
+    .panel { width: min(100% - 2rem, 960px); margin: -2.5rem auto 0; }
+    .loading { display: grid; min-height: 390px; place-items: center; border: 1px solid rgba(148,163,184,.15); border-radius: 18px; background: rgba(15,31,52,.72); box-shadow: inset 0 1px 0 rgba(255,255,255,.04); text-align: center; }
+    .loading[hidden] { display: none; }
+    .loading-orbit { position: relative; width: 56px; height: 56px; margin: 0 auto 1.3rem; border: 3px solid rgba(96,165,250,.18); border-top-color: #38bdf8; border-right-color: #2563eb; border-radius: 50%; animation: spin .9s linear infinite; }
+    .loading-orbit::after { position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; border-radius: 50%; background: #67e8f9; box-shadow: 0 0 16px #38bdf8; content: ''; transform: translate(-50%,-50%); }
+    .loading-title { margin-bottom: .45rem; color: #e3efff; font-size: 1.1rem; font-weight: 700; }
+    .loading-copy { color: #8fa7c4; font-size: .9rem; }
+    .results[hidden] { display: none; }
+    .section-title { display: flex; align-items: center; gap: .6rem; margin: 2rem 0 1rem; color: #d7e5f7; font-size: .92rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .section-title::after { flex: 1; height: 1px; background: rgba(148,163,184,.18); content: ''; }
+    .best-route { display: none; }
+    .best-route.show { display: block; }
+    .best-route .route { min-height: 142px; border-color: rgba(56,189,248,.55); background: linear-gradient(115deg,rgba(16,39,66,.98),rgba(18,37,63,.98)); box-shadow: 0 18px 42px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.08); }
+    .best-route .route::before { position: absolute; top: 1rem; left: 1.15rem; padding: .24rem .55rem; border: 1px solid rgba(56,189,248,.42); border-radius: 999px; background: rgba(14,116,144,.2); color: #7dd3fc; content: '推荐最快线路'; font-size: .74rem; font-weight: 700; }
+    .best-route .route-name { margin-top: 1.9rem; font-size: 1.45rem; }
+    .routes { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; text-align: left; }
+    .route { position: relative; display: grid; grid-template-columns: 1fr auto; gap: 1rem; min-height: 138px; padding: 1.25rem; border: 1px solid rgba(148,163,184,.16); border-radius: 16px; background: rgba(15,31,52,.78); box-shadow: inset 0 1px 0 rgba(255,255,255,.04); transition: border-color .2s ease, transform .2s ease, background .2s ease; }
+    .route:hover { border-color: rgba(96,165,250,.5); background: rgba(18,40,68,.94); transform: translateY(-3px); }
+    .route-name { overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .status { align-self: center; color: #90a4c0; font-size: .85rem; }
+    .status.ok { color: #6ee7b7; font-weight: 700; }
+    .status.ok::after { content: ' · 在线'; color: #86a7c7; font-weight: 400; }
+    .status.fail { color: #fca5a5; }
+    button { grid-column: 1 / -1; align-self: end; padding: .68rem .9rem; border: 1px solid rgba(96,165,250,.42); border-radius: 9px; background: linear-gradient(100deg,#2563eb,#0891b2); color: #fff; cursor: pointer; font: inherit; font-size: .9rem; font-weight: 700; box-shadow: 0 8px 18px rgba(14,116,144,.2); transition: transform .2s ease, filter .2s ease; }
+    button:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); }
+    button:disabled { cursor: not-allowed; opacity: .42; }
+    .empty { grid-column: 1 / -1; padding: 1rem; border: 1px solid rgba(248,113,113,.25); border-radius: 10px; background: rgba(127,29,29,.14); color: #fca5a5; }
+    .reload-page { display: block; width: 100%; margin-top: .85rem; border-color: rgba(96,165,250,.32); background: rgba(15,31,52,.74); color: #d6e7ff; box-shadow: none; }
+    .footer { margin: 2.5rem 0; color: #60738e; font-size: .8rem; letter-spacing: .03em; text-align: center; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .lds-ellipsis {
+      display: inline-block;
+      position: relative;
+      width: 40px;
+      height: 10px;
+    }
+
+    .lds-ellipsis div {
+      position: absolute;
+      top: 2px;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: #fff;
+      animation-timing-function: cubic-bezier(0, 1, 1, 0);
+    }
+
+    .lds-ellipsis div:nth-child(1) {
+      left: 6px;
+      animation: lds-ellipsis1 0.6s infinite;
+    }
+
+    .lds-ellipsis div:nth-child(2) {
+      left: 6px;
+      animation: lds-ellipsis2 0.6s infinite;
+    }
+
+    .lds-ellipsis div:nth-child(3) {
+      left: 17px;
+      animation: lds-ellipsis2 0.6s infinite;
+    }
+
+    .lds-ellipsis div:nth-child(4) {
+      left: 28px;
+      animation: lds-ellipsis3 0.6s infinite;
+    }
+
+    @keyframes lds-ellipsis1 {
+      0% {
+        transform: scale(0);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes lds-ellipsis2 {
+      0% {
+        transform: translate(0, 0);
+      }
+
+      100% {
+        transform: translate(10px, 0);
+      }
+    }
+
+    @keyframes lds-ellipsis3 {
+      0% {
+        transform: scale(1);
+      }
+
+      100% {
+        transform: scale(0);
+      }
+    }
+
+    @media (max-width: 768px) {
+      html {
+        font-size: 12px;
+      }
+      .hero { padding-top: 1.5rem; }
+      .hero-copy { margin-top: 1.5rem; }
+      .panel { width: min(100% - 1.5rem, 960px); }
+      h1 { font-size: 2.25rem; }
+      .routes { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <h1>选择更快的访问线路</h1>
+        <p class="text subtitle" id="info">正在检测各线路的实时响应速度</p>
+        <div class="save-tip">⌘ Ctrl + D 收藏此页，防止失联</div>
+      </div>
+    </div>
+  </header>
+  <main class="panel">
+    <section class="loading" id="loading" aria-live="polite">
+      <div>
+        <div class="loading-orbit" aria-hidden="true"></div>
+        <div class="loading-title">正在检测线路</div>
+        <div class="loading-copy">请稍候，正在获取最佳访问路径</div>
+      </div>
+    </section>
+    <div class="results" id="results" hidden>
+      <section class="best-route" id="bestRoute" aria-label="最佳线路"></section>
+      <h2 class="section-title">全部站点</h2>
+      <div class="routes" id="routes" aria-live="polite"></div>
+      <div class="footer">线路检测系统 © 2026</div>
+    </div>
+  </main>
+  <script>
+    // 获取当前页面的 URL
+    var url = window.location.href;
+
+    // 解析 URL，并获取查询参数
+    var urlParams = new URL(url);
+    var queryParams = {};
+    var path = ''; // 初始化 path 为空字符串
+
+    // 遍历所有查询参数并放入对象中
+    urlParams.searchParams.forEach(function (value, key) {
+      if (key === "path") {
+        // 如果查询参数名是 "path"，将其赋值给一个变量
+        path = value;
+      } else {
+        // 否则，将其他查询参数放入对象中
+        queryParams[key] = value;
+      }
+    });
+
+    function joinUrlAndPath(url, path) {
+      // 移除 URL 和路径末尾的斜杠
+      url = url.replace(/\/+$/, ''); // 移除 URL 末尾的斜杠
+      path = path.replace(/^\/+/, ''); // 移除路径开头的斜杠
+
+      // 使用 "/" 将 URL 和路径连接在一起
+      var joinedUrl = url + '/' + path;
+
+      return joinedUrl;
+    }
+
+    var routes = document.getElementById('routes');
+    var bestRoute = document.getElementById('bestRoute');
+    var info = document.getElementById('info');
+    var loading = document.getElementById('loading');
+    var resultPanel = document.getElementById('results');
+    function getHostConfig(host) {
+      if (typeof host === 'object' && host !== null) {
+        return { checkUrl: host.checkUrl || host.jumpUrl, jumpUrl: host.jumpUrl || host.checkUrl };
+      }
+      return { checkUrl: host, jumpUrl: host };
+    }
+
+    function destination(url) {
+      var params = new URLSearchParams(location.search);
+      // path 仅用于构建 hash 路由，不传递给目标站点的查询参数。
+      params.delete('path');
+      var query = params.toString();
+      return joinUrlAndPath(url, path) + (query ? '?' + query : '');
+    }
+
+    function createRoute(config) {
+      var row = document.createElement('div');
+      row.className = 'route';
+      var name = document.createElement('div');
+      name.className = 'route-name';
+      name.textContent = config.siteName;
+      var status = document.createElement('div');
+      status.className = 'status';
+      status.textContent = '检测中…';
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.disabled = true;
+      button.textContent = '进入线路';
+      button.addEventListener('click', function () { window.location.replace(destination(config.jumpUrl)); });
+      row.append(name, status, button);
+      routes.appendChild(row);
+      return { status: status, button: button, row: row };
+    }
+
+    function testRoute(config, view) {
+      if (!config.checkUrl || !config.jumpUrl) {
+        view.status.className = 'status fail';
+        view.status.textContent = '配置无效';
+        return Promise.resolve({ available: false, view: view });
+      }
+      var controller = new AbortController();
+      var startedAt = performance.now();
+      var timeout = setTimeout(function () { controller.abort(); }, 10000);
+      return fetch(config.checkUrl, { cache: 'no-store', mode: 'no-cors', signal: controller.signal })
+        .then(function (res) {
+          clearTimeout(timeout);
+          // 跨域且未设置 CORS 的线路会返回 opaque 响应；能收到该响应即代表线路可连通。
+          if (res.type !== 'opaque' && !res.ok) throw new Error('HTTP ' + res.status);
+          var elapsed = Math.round(performance.now() - startedAt);
+          view.status.className = 'status ok';
+          view.status.textContent = elapsed + ' ms';
+          view.button.disabled = false;
+          return { available: true, elapsed: elapsed, view: view };
+        })
+        .catch(function () {
+          clearTimeout(timeout);
+          view.status.className = 'status fail';
+          view.status.textContent = '暂不可用';
+          return { available: false, view: view };
+        });
+    }
+
+    function finishTests(results, prefix) {
+      var available = results.filter(function (result) { return result.available; });
+      if (available.length) {
+        available.sort(function (a, b) { return a.elapsed - b.elapsed; });
+        bestRoute.replaceChildren(available[0].view.row);
+        bestRoute.classList.add('show');
+        info.textContent = (prefix || '') + '检测完成，请手动选择一条可用线路进入';
+      } else {
+        routes.replaceChildren();
+        showReloadNotice('暂未检测到可用站点，请刷新页面重新获取站点');
+        info.textContent = (prefix || '') + '暂无可用线路';
+      }
+      loading.hidden = true;
+      resultPanel.hidden = false;
+    }
+
+    function showReloadNotice(text) {
+      var message = document.createElement('div');
+      message.className = 'empty';
+      message.textContent = text;
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'reload-page';
+      button.textContent = '刷新页面';
+      button.addEventListener('click', function () { window.location.reload(); });
+      message.appendChild(button);
+      routes.appendChild(message);
+    }
+
+    function checkDomains() {
+      resultPanel.hidden = true;
+      loading.hidden = false;
+      routes.replaceChildren();
+      bestRoute.replaceChildren();
+      bestRoute.classList.remove('show');
+      info.textContent = '正在检测各线路的实时响应速度';
+      fetch('./data.json?t=' + Date.now(), { cache: 'no-store' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('无法读取线路配置');
+          return res.json();
+        })
+        .then(function (hosts) {
+          if (!Array.isArray(hosts) || hosts.length === 0) throw new Error('没有可检测的线路');
+          var tests = hosts.map(function (host, index) {
+            var config = getHostConfig(host);
+            config.siteName = '站点 ' + (index + 1);
+            return testRoute(config, createRoute(config));
+          });
+          return Promise.all(tests);
+        })
+        .then(function (results) { finishTests(results); })
+        .catch(function () {
+          routes.replaceChildren();
+          var message = location.protocol === 'file:'
+            ? '无法读取 data.json：请通过网站或本地 HTTP 服务打开此页面'
+            : '无法读取线路配置，请确认 data.json 已部署在本站点根目录';
+          showReloadNotice(message);
+          info.textContent = '无法完成线路检测';
+          loading.hidden = true;
+          resultPanel.hidden = false;
+        });
+    }
+
+    checkDomains();
+
+    // 前端层面的检查工具拦截，仅用于减少普通用户误操作，不能替代服务端安全措施。
+    document.addEventListener('contextmenu', function (event) { event.preventDefault(); });
+    document.addEventListener('keydown', function (event) {
+      var key = event.key.toLowerCase();
+      var blocked = event.key === 'F12'
+        || (event.ctrlKey && event.shiftKey && ['i', 'j', 'c'].includes(key))
+        || (event.ctrlKey && key === 'u');
+      if (blocked) event.preventDefault();
+    });
+  </script>
+
+  <script type="text/javascript">
+    window.$crisp = [];
+    window.CRISP_WEBSITE_ID = ""; // 填写 Crisp ID
+    (function () {
+      d = document;
+      s = d.createElement("script");
+      s.src = "https://client.crisp.chat/l.js";
+      s.async = 1;
+      d.getElementsByTagName("head")[0].appendChild(s);
+    })();
+  </script>
+</body>
+
+</html>
